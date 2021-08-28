@@ -1,89 +1,147 @@
-// Constants and variables
-const cvs = document.getElementById('breakout');
-const ctx = cvs.getContext('2d');
+// Game parameters
+const WIDTH = 400;
+const HEIGHT = 500;
+const PADDLE_SPD = 0.7;
 
-cvs.style.border = '2px solid #fff';
+// Dimensions
+const WALL = WIDTH/50;
+const PADDLE_H = WALL;
+const PADDLE_W = PADDLE_H * 6;
 
-const PADDLE_WIDTH = 100;
-const PADDLE_MARGIN_BOTTOM = 50;
-const PADDLE_HEIGHT = 20;
-const BALL_RADIUS = 8;
+// Colors
+const COLOR_BGN = 'black';
+const COLOR_WALL = 'gray';
+const COLOR_PADDLE = 'brown';
 
-let leftMove = false;
-let rightMove = false;
-
-// Create the paddle
-const paddle = {
-    x: cvs.width/2 - PADDLE_WIDTH/2,
-    y: cvs.height - PADDLE_MARGIN_BOTTOM - PADDLE_HEIGHT,
-    width: PADDLE_WIDTH,
-    height: PADDLE_HEIGHT,
-    dx: 5
+// Directions
+const Direction = {
+    LEFT: 0,
+    RIGHT: 1,
+    STOP: 2
 };
 
-// Create the ball
-const ball = {
-    x: cvs.width/2,
-    y: paddle.y - BALL_RADIUS,
-    radius: BALL_RADIUS,
-    speed: 4,
-    dx: 3,
-    dy: -3
-};
+// Canvas settings
+var canv = document.createElement('canvas');
+canv.width = WIDTH;
+canv.height = HEIGHT;
+document.body.appendChild(canv);
+var ctx = canv.getContext('2d');
+ctx.lineWidth = WALL;
 
-// Draw paddle function
-function drawPaddle() {
-    ctx.fillStyle = 'brown';
-    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-}
+// Game variables
+var paddle;
 
-// Draw ball function
-function drawBall() {
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball, radius, 0, Math.PI*2);
-}
+// Start a new game
+newGame();
 
-// Controls for paddle
-document.addEventListener('keydown', function(event) {
-    if (event.keyCode == 37 || event.keyCode == 65) {
-        leftMove = true;
-    }else if (event.keyCode == 39 || event.keyCode == 68) {
-        rightMove = true;
-    }
-});
-document.addEventListener('keyup', function(event) {
-    if (event.keyCode == 37 || event.keyCode == 65) {
-        leftMove = false;
-    }else if (event.keyCode == 39 || event.keyCode == 68) {
-        rightMove = false;
-    }
-});
-
-// Move paddle function
-function movePaddle() {
-    if (rightMove && paddle.x + paddle.width < cvs.width) {
-        paddle.x += paddle.dx;
-    } else if (leftMove && paddle.x > 0) {
-        paddle.x -= paddle.dx;
-    }
-}
-
-// Insert paddle to canvas function
-function insertPaddle() {
-    drawPaddle();
-}
-
-// Update game function
-function updateGame() {
-    movePaddle();
-}
+// Events
+document.addEventListener('keydown', keyDown);
+document.addEventListener('keyup', keyUp);
 
 // Game loop
-function loop() {
-    ctx.drawImage(bgImage, 0, 0);
-    insertPaddle();
-    updateGame();
-    requestAnimationFrame(loop);
-}
+var timeDelta, timeLast;
+requestAnimationFrame(loop);
 
-loop();
+function loop(timeNow) {
+    if (!timeLast) {
+        timeLast = timeNow;
+    }
+
+    timeDelta = (timeNow - timeLast) / 1000;
+    timeLast = timeNow;
+
+    // Update
+    updatePaddle(timeDelta);
+
+    // Draw
+    drawBackgroud();
+    drawWall();
+    drawPaddle();
+
+    // Next loop
+    requestAnimationFrame(loop);
+};
+
+// Draw background board
+function drawBackgroud() {
+    ctx.fillStyle = COLOR_BGN;
+    ctx.fillRect(0, 0, canv.width, canv.height);
+};
+
+// Draw walls
+function drawWall() {
+    let hwall = WALL * 0.5;
+    ctx.strokeStyle = COLOR_WALL;
+    ctx.beginPath();
+    ctx.moveTo(hwall, HEIGHT);
+    ctx.lineTo(hwall, hwall);
+    ctx.lineTo(WIDTH - hwall, hwall);
+    ctx.lineTo(WIDTH - hwall, HEIGHT);
+    ctx.stroke();
+};
+
+// Draw paddle
+function drawPaddle() {
+    ctx.fillStyle = COLOR_PADDLE;
+    ctx.fillRect(paddle.x - paddle.w * 0.5, paddle.y - paddle.h * 0.5, paddle.w, paddle.h);
+};
+
+// Controls paddle
+function keyDown(ev) {
+    switch(ev.keyCode) {
+        // Move left
+        case 37:
+            movePaddle(Direction.LEFT);
+            break;
+        // Move right
+        case 39:
+            movePaddle(Direction.RIGHT);
+            break;
+    }
+};
+
+function keyUp(ev) {
+    switch(ev.keyCode) {
+        // Stop moving left
+        case 37:
+        // Stop moving right
+        case 39:
+            movePaddle(Direction.STOP);
+            break;
+    }
+};
+
+// Move paddle
+function movePaddle(direction) {
+    switch (direction) {
+        case Direction.LEFT:
+            paddle.xv = -paddle.spd;
+            break;
+        case Direction.RIGHT:
+            paddle.xv = paddle.spd;
+            break;
+        case Direction.STOP:
+            paddle.xv = 0;
+            break;
+    }
+};
+
+// New paddle
+function newGame() {
+    paddle = new Paddle();
+};
+
+// Update the paddle
+function updatePaddle(delta) {
+    paddle.x += paddle.xv * delta;
+};
+
+// Settings paddle
+function Paddle() {
+    this.w = PADDLE_W;
+    this.h = PADDLE_H;
+    this.x = canv.width / 2;
+    this.y = canv.height - this.h * 3;
+    this.spd = PADDLE_SPD * WIDTH;
+    this.xv = 0;
+};

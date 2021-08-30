@@ -5,3 +5,8 @@ body {
     align-items: center;
     background-color: black;
 }
+
+#banner {
+    margin-bottom: 10px;
+    width: 160px;
+}

@@ -67,6 +67,13 @@ function loop(timeNow) {
     requestAnimationFrame(loop);
 };
 
+// Apply ball speed
+function applyBallSpeed(angle) {
+    // Update the velocity of the ball
+    ball.xv = ball.spd * Math.cos(angle);
+    ball.yv = -ball.spd * Math.sin(angle);
+};
+
 // Draw background board
 function drawBackgroud() {
     ctx.fillStyle = COLOR_BGN;
@@ -100,12 +107,21 @@ function drawBall() {
 // Controls paddle
 function keyDown(ev) {
     switch(ev.keyCode) {
-        // Move left
+        // Space (serve the ball)
+        case 32:
+            serveBall();
+            break; 
         case 37:
+            movePaddle(Direction.LEFT);
+            break;
+        case 65:
             movePaddle(Direction.LEFT);
             break;
         // Move right
         case 39:
+            movePaddle(Direction.RIGHT);
+            break;
+        case 68:
             movePaddle(Direction.RIGHT);
             break;
     }
@@ -115,8 +131,10 @@ function keyUp(ev) {
     switch(ev.keyCode) {
         // Stop moving left
         case 37:
+        case 65:
         // Stop moving right
         case 39:
+        case 68:
             movePaddle(Direction.STOP);
             break;
     }
@@ -143,6 +161,23 @@ function newGame() {
     ball = new Ball();
 };
 
+// Ball out of board
+function outOfBoard() {
+    // Out of board
+    newGame();
+};
+
+// Serve the ball
+function serveBall() {
+    // Ball already
+    if (ball.yv != 0) {
+        return;
+    }
+    // Random angle (45° and 135°)
+    let angle = Math.random() * Math.PI / 2 + Math.PI / 4;
+    applyBallSpeed(angle);
+};
+
 // Update the paddle
 function updatePaddle(delta) {
     paddle.x += paddle.xv * delta;
@@ -158,6 +193,29 @@ function updatePaddle(delta) {
 function updateBall(delta) {
     ball.x += ball.xv * delta;
     ball.y += ball.yv * delta;
+    // Bounce ball off the walls
+    if (ball.x < WALL + ball.w * 0.5) {
+        ball.x = WALL + ball.w * 0.5;
+        ball.xv = -ball.xv;
+    } else if (ball.x > canv.width - WALL - ball.w * 0.5) {
+        ball.x = canv.width - WALL - ball.w * 0.5;
+        ball.xv = -ball.xv;
+    } else if (ball.y < WALL + ball.h * 0.5) {
+        ball.y = WALL + ball.h * 0.5;
+        ball.yv = -ball.yv;
+    }
+    // Bounce ball in the paddle
+    if (ball.y > paddle.y - paddle.h * 0.5 - ball.h * 0.5
+        && ball.y < paddle.y
+        && ball.x > paddle.x - paddle.w * 0.5 - ball.w * 0.5
+        && ball.x < paddle.x + paddle.w * 0.5 + ball.w * 0.5) {
+            ball.y = paddle.y - paddle.h * 0.5 - ball.h * 0.5;
+            ball.yv = -ball.yv;
+    }
+    // Out of board
+    if (ball.y > canv.height) {
+        outOfBoard();
+    }
     // Move ball
     if (ball.yv == 0) {
         ball.x = paddle.x;

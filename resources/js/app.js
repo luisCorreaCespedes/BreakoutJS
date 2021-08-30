@@ -2,16 +2,19 @@
 const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
+const BALL_SPD = 0.5;
 
 // Dimensions
 const WALL = WIDTH/50;
 const PADDLE_H = WALL;
 const PADDLE_W = PADDLE_H * 6;
+const BALL_SIZE = WALL;
 
 // Colors
 const COLOR_BGN = 'black';
 const COLOR_WALL = 'gray';
 const COLOR_PADDLE = 'brown';
+const COLOR_BALL = 'white';
 
 // Directions
 const Direction = {
@@ -29,7 +32,7 @@ var ctx = canv.getContext('2d');
 ctx.lineWidth = WALL;
 
 // Game variables
-var paddle;
+var ball, paddle;
 
 // Start a new game
 newGame();
@@ -52,11 +55,13 @@ function loop(timeNow) {
 
     // Update
     updatePaddle(timeDelta);
+    updateBall(timeDelta);
 
     // Draw
     drawBackgroud();
     drawWall();
     drawPaddle();
+    drawBall();
 
     // Next loop
     requestAnimationFrame(loop);
@@ -84,6 +89,12 @@ function drawWall() {
 function drawPaddle() {
     ctx.fillStyle = COLOR_PADDLE;
     ctx.fillRect(paddle.x - paddle.w * 0.5, paddle.y - paddle.h * 0.5, paddle.w, paddle.h);
+};
+
+// Draw ball
+function drawBall() {
+    ctx.fillStyle = COLOR_BALL;
+    ctx.fillRect(ball.x - ball.w * 0.5, ball.y - ball.h * 0.5, ball.w, ball.h);
 };
 
 // Controls paddle
@@ -129,11 +140,29 @@ function movePaddle(direction) {
 // New paddle
 function newGame() {
     paddle = new Paddle();
+    ball = new Ball();
 };
 
 // Update the paddle
 function updatePaddle(delta) {
     paddle.x += paddle.xv * delta;
+    // Collision walls
+    if (paddle.x < WALL + paddle.w * 0.5) {
+        paddle.x = WALL + paddle.w * 0.5;
+    } else if (paddle.x > canv.width -WALL - paddle.w * 0.5) {
+        paddle.x = canv.width -WALL - paddle.w * 0.5;
+    }
+};
+
+// Update the ball
+function updateBall(delta) {
+    ball.x += ball.xv * delta;
+    ball.y += ball.yv * delta;
+    // Move ball
+    if (ball.yv == 0) {
+        ball.x = paddle.x;
+    }
+
 };
 
 // Settings paddle
@@ -144,4 +173,15 @@ function Paddle() {
     this.y = canv.height - this.h * 3;
     this.spd = PADDLE_SPD * WIDTH;
     this.xv = 0;
+};
+
+// Settings ball
+function Ball() {
+    this.w = BALL_SIZE;
+    this.h = BALL_SIZE;
+    this.x = paddle.x;
+    this.y = paddle.y - paddle.h / 2 - this.h / 2;
+    this.spd = BALL_SPD * WIDTH;
+    this.xv = 0;
+    this.yv = 0;
 };

@@ -3,13 +3,18 @@ const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
 const BALL_SPD = 0.5;
+const BRICK_ROWS = 8;
+const BRICK_COLS = 14;
+const BRICK_GAP = 0.2;
+const MARGIN = 0.1;
+const MAX_LEVEL = 10; // Maximun game level (+2 rows per level)
 
 // Dimensions
 const WALL = WIDTH/50;
 const PADDLE_H = WALL;
 const PADDLE_W = PADDLE_H * 6;
 const BALL_SIZE = WALL;
-const BALL_SPIN = 1;
+const BALL_SPIN = 0.4;
 
 // Colors
 const COLOR_BGN = 'black';
@@ -34,6 +39,7 @@ ctx.lineWidth = WALL;
 
 // Game variables
 var ball, paddle;
+var bricks = [], level;
 
 // Start a new game
 newGame();
@@ -63,6 +69,7 @@ function loop(timeNow) {
     drawWall();
     drawPaddle();
     drawBall();
+    drawBricks();
 
     // Next loop
     requestAnimationFrame(loop);
@@ -79,6 +86,36 @@ function applyBallSpeed(angle) {
     // Update the velocity of the ball
     ball.xv = ball.spd * Math.cos(angle);
     ball.yv = -ball.spd * Math.sin(angle);
+};
+
+// Create bricks
+function createBricks() {
+    // Row dimentions
+    let minY = WALL;
+    let maxY = ball.y - ball.h * 3.5;
+    let totalSpaceY = maxY - minY;
+    let totalRows = MARGIN + BRICK_ROWS + MAX_LEVEL * 2;
+    let rowH = totalSpaceY / totalRows;
+    let gap = WALL * BRICK_GAP;
+    let h = rowH - gap;
+    // Column dimentions
+    let totalSpaceX = WIDTH - WALL * 2;
+    let colW = (totalSpaceX - gap) / BRICK_COLS;
+    let w = colW - gap;
+    // Bricks array
+    bricks = [];
+    let cols = BRICK_COLS;
+    let rows = BRICK_ROWS + level * 2;
+    let color, left, top;
+    for (let i = 0; i < rows; i++) {
+        bricks[i] = [];
+        color = 'green';
+        top = WALL + (MARGIN + i) * rowH;
+        for (let j = 0; j < cols; j++) {
+            left = WALL + gap + j * colW;
+            bricks[i][j] = new Brick(left, top, w, h, color);
+        }
+    }
 };
 
 // Draw background board
@@ -109,6 +146,16 @@ function drawPaddle() {
 function drawBall() {
     ctx.fillStyle = COLOR_BALL;
     ctx.fillRect(ball.x - ball.w * 0.5, ball.y - ball.h * 0.5, ball.w, ball.h);
+};
+
+// Draw bricks
+function drawBricks() {
+    for (let row of bricks) {
+        for (let brick of row) {
+            ctx.fillStyle = brick.color;
+            ctx.fillRect(brick.left, brick.top, brick.w, brick.h);
+        }
+    }
 };
 
 // Controls paddle
@@ -162,10 +209,12 @@ function movePaddle(direction) {
     }
 };
 
-// New paddle
+// New game room
 function newGame() {
     paddle = new Paddle();
     ball = new Ball();
+    level = 0;
+    createBricks();
 };
 
 // Ball out of board
@@ -242,6 +291,17 @@ function Paddle() {
     this.y = canv.height - this.h * 3;
     this.spd = PADDLE_SPD * WIDTH;
     this.xv = 0;
+};
+
+// Setting bricks
+function Brick(left, top, w, h, color) {
+    this.w = w;
+    this.h = h;
+    this.bot = top + h;
+    this.left = left;
+    this.right = left + w;
+    this.top = top;
+    this.color = color;
 };
 
 // Settings ball

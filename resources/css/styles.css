@@ -10,3 +10,8 @@ body {
     margin-bottom: 10px;
     width: 160px;
 }
+
+#instructions {
+    margin-top: 30px;
+    width: 600px;
+}

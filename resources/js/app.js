@@ -9,6 +9,7 @@ const WALL = WIDTH/50;
 const PADDLE_H = WALL;
 const PADDLE_W = PADDLE_H * 6;
 const BALL_SIZE = WALL;
+const BALL_SPIN = 1;
 
 // Colors
 const COLOR_BGN = 'black';
@@ -69,6 +70,12 @@ function loop(timeNow) {
 
 // Apply ball speed
 function applyBallSpeed(angle) {
+    // Keep the angle to paddle
+    if (angle < Math.PI / 6) {
+        angle = Math.PI / 6;
+    } else if (angle > Math.PI * 5 / 6) {
+        angle = Math.PI * 5 / 6;
+    }
     // Update the velocity of the ball
     ball.xv = ball.spd * Math.cos(angle);
     ball.yv = -ball.spd * Math.sin(angle);
@@ -211,6 +218,10 @@ function updateBall(delta) {
         && ball.x < paddle.x + paddle.w * 0.5 + ball.w * 0.5) {
             ball.y = paddle.y - paddle.h * 0.5 - ball.h * 0.5;
             ball.yv = -ball.yv;
+        // Modify the angle ball
+        let angle = Math.atan2(-ball.yv, ball.xv);
+        angle += (Math.random() * Math.PI / 2 - Math.PI / 4) * BALL_SPIN;
+        applyBallSpeed(angle);
     }
     // Out of board
     if (ball.y > canv.height) {

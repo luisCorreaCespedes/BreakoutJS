@@ -2,9 +2,9 @@
 const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
-const BALL_SPD = 0.5;
-const BRICK_ROWS = 8;
-const BRICK_COLS = 14;
+const BALL_SPD = 0.8;
+const BRICK_ROWS = 10;
+const BRICK_COLS = 8;
 const BRICK_GAP = 0.2;
 const MARGIN = 0.1;
 const MAX_LEVEL = 10; // Maximun game level (+2 rows per level)
@@ -63,6 +63,7 @@ function loop(timeNow) {
     // Update
     updatePaddle(timeDelta);
     updateBall(timeDelta);
+    updateBricks(timeDelta);
 
     // Draw
     drawBackgroud();
@@ -106,10 +107,12 @@ function createBricks() {
     bricks = [];
     let cols = BRICK_COLS;
     let rows = BRICK_ROWS + level * 2;
-    let color, left, top;
+    let color, left, top, rank, highestRank;
+    highestRank = rows * 0.5 - 1;
     for (let i = 0; i < rows; i++) {
         bricks[i] = [];
-        color = 'green';
+        rank = Math.floor(i * 0.5);
+        color = getBrickColor(rank, highestRank);
         top = WALL + (MARGIN + i) * rowH;
         for (let j = 0; j < cols; j++) {
             left = WALL + gap + j * colW;
@@ -152,10 +155,32 @@ function drawBall() {
 function drawBricks() {
     for (let row of bricks) {
         for (let brick of row) {
+            if (brick == null) {
+                continue;
+            }
             ctx.fillStyle = brick.color;
             ctx.fillRect(brick.left, brick.top, brick.w, brick.h);
         }
     }
+};
+
+// Set color bricks
+// Red 0, Orange 0.33, Yellow 0.67, Green 1
+function getBrickColor(rank, highestRank) {
+    let fraction = rank / highestRank;
+    let r, g, b = 0;
+    // Red to orange to yellow
+    if (fraction <= 0.67) {
+        r = 255;
+        g = 255 * fraction / 0.67;
+    }
+    // Yellow to green
+    else {
+        r = 255 * (1 - fraction) / 0.33;
+        g = 255;
+    }
+    // Return rgb
+    return "rgb(" + r + ", " + g + ", " + b + ")";
 };
 
 // Controls paddle
@@ -283,6 +308,21 @@ function updateBall(delta) {
 
 };
 
+// Update bricks
+function updateBricks(delta) {
+    // Check for ball collision
+    OUTER: for (let i = 0; i < bricks.length; i++) {
+        for (let j = 0; j < BRICK_COLS; j++) {
+            if (bricks[i][j] != null && bricks[i][j].intersect(ball)) {
+                bricks[i][j] = null;
+                ball.yv = -ball.yv;
+                //Score
+                break OUTER;
+            }
+        }
+    }
+};
+
 // Settings paddle
 function Paddle() {
     this.w = PADDLE_W;
@@ -302,6 +342,16 @@ function Brick(left, top, w, h, color) {
     this.right = left + w;
     this.top = top;
     this.color = color;
+    this.intersect = function(ball) {
+        let bBot = ball.y + ball.h * 0.5;
+        let bLeft = ball.x - ball.w * 0.5;
+        let bRight = ball.x + ball.w * 0.5;
+        let bTop = ball.y - ball.h * 0.5;
+        return this.left < bRight
+        && bLeft < this.right
+        && this.bot > bTop
+        && bBot > this.top;
+    }
 };
 
 // Settings ball

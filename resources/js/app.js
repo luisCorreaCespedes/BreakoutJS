@@ -3,6 +3,7 @@ const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
 const BALL_SPD = 0.6;
+const BALL_SPD_MAX = 1;
 const BRICK_ROWS = 6;
 const BRICK_COLS = 8;
 const BRICK_GAP = 0.2;
@@ -17,7 +18,7 @@ const WALL = WIDTH/50;
 const PADDLE_H = WALL;
 const PADDLE_W = PADDLE_H * 6;
 const BALL_SIZE = WALL;
-const BALL_SPIN = 0.2;
+const BALL_SPIN = 0.1;
 
 // Colors
 const COLOR_BGN = 'black';
@@ -32,6 +33,8 @@ const TEXT_LEVEL = 'LEVEL';
 const TEXT_LIVES = 'LIVES';
 const TEXT_SCORE = 'SCORE';
 const TEXT_HIGHSCORE = 'HIGHSCORE';
+const TEXT_GAME_OVER = 'GAME OVER';
+const TEXT_WIN = '¡YOU WIN!';
 
 // Directions
 const Direction = {
@@ -52,6 +55,7 @@ ctx.textBaseline = 'middle';
 // Game variables
 var ball, paddle;
 var bricks = [];
+var gameOver, numBricks, win;
 var level, lives, score, scoreHigh, textSize;
 
 // Start a new game
@@ -74,9 +78,11 @@ function loop(timeNow) {
     timeLast = timeNow;
 
     // Update
-    updatePaddle(timeDelta);
-    updateBall(timeDelta);
-    updateBricks(timeDelta);
+    if (!gameOver) {
+        updatePaddle(timeDelta);
+        updateBall(timeDelta);
+        updateBricks(timeDelta);
+    }
 
     // Draw
     drawBackgroud();
@@ -116,17 +122,19 @@ function createBricks() {
     bricks = [];
     let cols = BRICK_COLS;
     let rows = BRICK_ROWS + level * 2;
-    let color, left, top, rank, highestRank, score;
+    let color, left, top, rank, highestRank, score, spdMult;
+    numBricks = cols * rows;
     highestRank = rows * 0.5 - 1;
     for (let i = 0; i < rows; i++) {
         bricks[i] = [];
         rank = Math.floor(i * 0.5);
         score = (highestRank - rank) * 2 + 1;
+        spdMult = 1 + (highestRank - rank) / highestRank * (BALL_SPD_MAX - 1);
         color = getBrickColor(rank, highestRank);
         top = WALL + (MARGIN + i) * rowH;
         for (let j = 0; j < cols; j++) {
             left = WALL + gap + j * colW;
-            bricks[i][j] = new Brick(left, top, w, h, color, score);
+            bricks[i][j] = new Brick(left, top, w, h, color, score, spdMult);
         }
     }
 };
@@ -189,6 +197,14 @@ function drawText() {
     ctx.fillText(level, x3, yValue, maxWidth3);
     ctx.textAlign = 'right';
     ctx.fillText(scoreHigh, x4, yValue, maxWidth4);
+    // Game over
+    if (gameOver) {
+        let text = win ? TEXT_WIN : TEXT_GAME_OVER;
+        ctx.font = textSize + "px" + TEXT_FONT;
+        ctx.textAlign = 'center';
+        ctx.fillText(text, WIDTH * 0.5, paddle.y - 200, maxWidth);
+        ctx.fillText('PRESS SPACE TO PLAY AGAIN', WIDTH * 0.5, paddle.y - 180, maxWidth);
+   }
 };
 
 // Draw ball
@@ -235,6 +251,9 @@ function keyDown(ev) {
         // Space (serve the ball)
         case 32:
             serveBall();
+            if (gameOver) {
+                newGame();
+            }
             break; 
         case 37:
             movePaddle(Direction.LEFT);
@@ -288,9 +307,11 @@ function newBall() {
 
 // New game room
 function newGame() {
+    gameOver = false;
     level = 1;
     lives = GAME_LIVES;
     score = 0;
+    win = false;
     // Get highsocre from local storage
     let scoreStr = localStorage.getItem(KEY_SCORE);
     if (scoreStr == null) {
@@ -310,18 +331,28 @@ function newLevel() {
 // Ball out of board
 function outOfBoard() {
     // Out of board
-    newGame();
+    lives--;
+    if (lives == 0) {
+        gameOver = true;
+    }
+    newBall();
 };
 
 // Serve the ball
 function serveBall() {
     // Ball already
     if (ball.yv != 0) {
-        return;
+        return false;
     }
-    // Random angle (45° and 135°)
-    let angle = Math.random() * Math.PI / 2 + Math.PI / 4;
+    // Random angle
+    let minBounceAngle = MIN_BOUNCE_ANGLE / 180 * Math.PI;
+    console.log("minBounceAngle: " + minBounceAngle);
+    let range = Math.PI - minBounceAngle * 0.2;
+    console.log("range: " + range);
+    let angle = Math.random() * range + minBounceAngle;
+    console.log("angle: " + angle);
     applyBallSpeed(angle);
+    return true;
 };
 
 // Spin ball
@@ -402,12 +433,30 @@ function updateBricks(delta) {
         for (let j = 0; j < BRICK_COLS; j++) {
             if (bricks[i][j] != null && bricks[i][j].intersect(ball)) {
                 updateScore(bricks[i][j].score);
-                bricks[i][j] = null;
+                ball.setSpeed(bricks[i][j].spdMult);
+                if (ball.yv < 0) {
+                    ball.y = bricks[i][j].bot + ball.h * 0.5;
+                } else {
+                    ball.y = bricks[i][j].top - ball.h * 0.5;
+                }
                 ball.yv = -ball.yv;
-                spinBall();
+                bricks[i][j] = null;
                 //Score
+                numBricks--;
+                spinBall();
                 break OUTER;
             }
+        }
+    }
+    // Next level
+    if (numBricks == 0) {
+        if (level < MAX_LEVEL) {
+            level++;
+            newLevel();
+        } else {
+            gameOver = true;
+            win = true;
+            newBall();
         }
     }
 };
@@ -432,7 +481,7 @@ function Paddle() {
 };
 
 // Setting bricks
-function Brick(left, top, w, h, color, score) {
+function Brick(left, top, w, h, color, score, spdMult) {
     this.w = w;
     this.h = h;
     this.bot = top + h;
@@ -441,6 +490,7 @@ function Brick(left, top, w, h, color, score) {
     this.top = top;
     this.color = color;
     this.score = score;
+    this.spdMult = spdMult;
     this.intersect = function(ball) {
         let bBot = ball.y + ball.h * 0.5;
         let bLeft = ball.x - ball.w * 0.5;
@@ -462,4 +512,7 @@ function Ball() {
     this.spd = BALL_SPD * WIDTH;
     this.xv = 0;
     this.yv = 0;
+    this.setSpeed = function(spdMult) {
+        this.spd = Math.max(this.spd, BALL_SPD * HEIGHT * spdMult);
+    }
 };

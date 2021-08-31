@@ -2,7 +2,7 @@
 const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
-const BALL_SPD = 0.8;
+const BALL_SPD = 0.6;
 const BRICK_ROWS = 10;
 const BRICK_COLS = 8;
 const BRICK_GAP = 0.2;
@@ -287,7 +287,7 @@ function updateBall(delta) {
     }
     // Bounce ball in the paddle
     if (ball.y > paddle.y - paddle.h * 0.5 - ball.h * 0.5
-        && ball.y < paddle.y
+        && ball.y < paddle.y + paddle.h * 0.5
         && ball.x > paddle.x - paddle.w * 0.5 - ball.w * 0.5
         && ball.x < paddle.x + paddle.w * 0.5 + ball.w * 0.5) {
             ball.y = paddle.y - paddle.h * 0.5 - ball.h * 0.5;

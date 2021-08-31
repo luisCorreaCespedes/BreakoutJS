@@ -2,25 +2,36 @@
 const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
-const BALL_SPD = 0.6;
-const BRICK_ROWS = 10;
+const BALL_SPD = 0.7;
+const BRICK_ROWS = 6;
 const BRICK_COLS = 8;
 const BRICK_GAP = 0.2;
-const MARGIN = 0.1;
-const MAX_LEVEL = 10; // Maximun game level (+2 rows per level)
+const MARGIN = 2;
+const MAX_LEVEL = 8; // Maximun game level (+2 rows per level)
+const MIN_BOUNCE_ANGLE = 30;
+const GAME_LIVES = 3;
+const KEY_SCORE = 'highscore';
 
 // Dimensions
 const WALL = WIDTH/50;
 const PADDLE_H = WALL;
 const PADDLE_W = PADDLE_H * 6;
 const BALL_SIZE = WALL;
-const BALL_SPIN = 0.4;
+const BALL_SPIN = 0.2;
 
 // Colors
 const COLOR_BGN = 'black';
 const COLOR_WALL = 'gray';
 const COLOR_PADDLE = 'brown';
 const COLOR_BALL = 'white';
+const COLOR_TEXT = 'white';
+
+// Text fonts
+const TEXT_FONT = 'Lucida Console';
+const TEXT_LEVEL = 'LEVEL';
+const TEXT_LIVES = 'LIVES';
+const TEXT_SCORE = 'SCORE';
+const TEXT_HIGHSCORE = 'HIGHSCORE';
 
 // Directions
 const Direction = {
@@ -36,10 +47,12 @@ canv.height = HEIGHT;
 document.body.appendChild(canv);
 var ctx = canv.getContext('2d');
 ctx.lineWidth = WALL;
+ctx.textBaseline = 'middle';
 
 // Game variables
 var ball, paddle;
-var bricks = [], level;
+var bricks = [];
+var level, lives, score, scoreHigh, textSize;
 
 // Start a new game
 newGame();
@@ -69,8 +82,9 @@ function loop(timeNow) {
     drawBackgroud();
     drawWall();
     drawPaddle();
-    drawBall();
     drawBricks();
+    drawText();
+    drawBall();
 
     // Next loop
     requestAnimationFrame(loop);
@@ -78,12 +92,6 @@ function loop(timeNow) {
 
 // Apply ball speed
 function applyBallSpeed(angle) {
-    // Keep the angle to paddle
-    if (angle < Math.PI / 6) {
-        angle = Math.PI / 6;
-    } else if (angle > Math.PI * 5 / 6) {
-        angle = Math.PI * 5 / 6;
-    }
     // Update the velocity of the ball
     ball.xv = ball.spd * Math.cos(angle);
     ball.yv = -ball.spd * Math.sin(angle);
@@ -99,6 +107,7 @@ function createBricks() {
     let rowH = totalSpaceY / totalRows;
     let gap = WALL * BRICK_GAP;
     let h = rowH - gap;
+    textSize = rowH * MARGIN * 0.5;
     // Column dimentions
     let totalSpaceX = WIDTH - WALL * 2;
     let colW = (totalSpaceX - gap) / BRICK_COLS;
@@ -107,16 +116,17 @@ function createBricks() {
     bricks = [];
     let cols = BRICK_COLS;
     let rows = BRICK_ROWS + level * 2;
-    let color, left, top, rank, highestRank;
+    let color, left, top, rank, highestRank, score;
     highestRank = rows * 0.5 - 1;
     for (let i = 0; i < rows; i++) {
         bricks[i] = [];
         rank = Math.floor(i * 0.5);
+        score = (highestRank - rank) * 2 + 1;
         color = getBrickColor(rank, highestRank);
         top = WALL + (MARGIN + i) * rowH;
         for (let j = 0; j < cols; j++) {
             left = WALL + gap + j * colW;
-            bricks[i][j] = new Brick(left, top, w, h, color);
+            bricks[i][j] = new Brick(left, top, w, h, color, score);
         }
     }
 };
@@ -143,6 +153,42 @@ function drawWall() {
 function drawPaddle() {
     ctx.fillStyle = COLOR_PADDLE;
     ctx.fillRect(paddle.x - paddle.w * 0.5, paddle.y - paddle.h * 0.5, paddle.w, paddle.h);
+};
+
+// Draw text
+function drawText() {
+    ctx.fillStyle = COLOR_TEXT;
+    let labelSize = textSize * 0.5;
+    let MARGIN = WALL * 2;
+    let maxWidth = WIDTH - MARGIN * 2;
+    let maxWidth1 = maxWidth * 0.3;
+    let maxWidth2 = maxWidth * 0.2;
+    let maxWidth3 = maxWidth * 0.2;
+    let maxWidth4 = maxWidth * 0.3;
+    let x1 = MARGIN;
+    let x2 = WIDTH * 0.36;
+    let x3 = WIDTH * 0.6;
+    let x4 = WIDTH - MARGIN;
+    let yLabel = WALL + labelSize;
+    let yValue = yLabel + textSize * 0.8;
+    // Labels
+    ctx.font = labelSize + "px" + TEXT_FONT;
+    ctx.textAlign = 'left';
+    ctx.fillText(TEXT_SCORE, x1, yLabel, maxWidth1);
+    ctx.textAlign = 'center';
+    ctx.fillText(TEXT_LIVES, x2, yLabel, maxWidth2);
+    ctx.fillText(TEXT_LEVEL, x3, yLabel, maxWidth3);
+    ctx.textAlign = 'right';
+    ctx.fillText(TEXT_HIGHSCORE, x4, yLabel, maxWidth4);
+    // Values
+    ctx.font = textSize + "px" + TEXT_FONT;
+    ctx.textAlign = 'left';
+    ctx.fillText(score, x1, yValue, maxWidth1);
+    ctx.textAlign = 'center';
+    ctx.fillText(lives, x2, yValue, maxWidth2);
+    ctx.fillText(level, x3, yValue, maxWidth3);
+    ctx.textAlign = 'right';
+    ctx.fillText(scoreHigh, x4, yValue, maxWidth4);
 };
 
 // Draw ball
@@ -234,11 +280,30 @@ function movePaddle(direction) {
     }
 };
 
-// New game room
-function newGame() {
+//  New ball
+function newBall() {
     paddle = new Paddle();
     ball = new Ball();
-    level = 0;
+};
+
+// New game room
+function newGame() {
+    level = 1;
+    lives = GAME_LIVES;
+    score = 0;
+    // Get highsocre from local storage
+    let scoreStr = localStorage.getItem(KEY_SCORE);
+    if (scoreStr == null) {
+        scoreHigh = 0;
+    } else {
+        scoreHigh = parseInt(scoreStr);
+    }
+    newLevel(); // Start a new level
+};
+
+// New level
+function newLevel() {
+    newBall();
     createBricks();
 };
 
@@ -256,6 +321,29 @@ function serveBall() {
     }
     // Random angle (45° and 135°)
     let angle = Math.random() * Math.PI / 2 + Math.PI / 4;
+    applyBallSpeed(angle);
+};
+
+// Spin ball
+function spinBall() {
+    let upwards = ball.yv < 0;
+    let angle = Math.atan2(-ball.yv, ball.xv);
+    angle += (Math.random() * Math.PI / 2 - Math.PI / 4) * BALL_SPIN;
+    // Minimun bounce
+    let minBounceAngle = MIN_BOUNCE_ANGLE / 180 * Math.PI;
+    if (upwards) {
+        if (angle < minBounceAngle) {
+            angle = minBounceAngle;
+        } else if (angle > Math.PI - minBounceAngle) {
+            angle = Math.PI - minBounceAngle;
+        }
+    } else {
+        if (angle > -minBounceAngle) {
+            angle = -minBounceAngle;
+        } else if (angle < -Math.PI + minBounceAngle) {
+            angle = -Math.PI + minBounceAngle;
+        }
+    }
     applyBallSpeed(angle);
 };
 
@@ -278,12 +366,15 @@ function updateBall(delta) {
     if (ball.x < WALL + ball.w * 0.5) {
         ball.x = WALL + ball.w * 0.5;
         ball.xv = -ball.xv;
+        spinBall();
     } else if (ball.x > canv.width - WALL - ball.w * 0.5) {
         ball.x = canv.width - WALL - ball.w * 0.5;
         ball.xv = -ball.xv;
+        spinBall();
     } else if (ball.y < WALL + ball.h * 0.5) {
         ball.y = WALL + ball.h * 0.5;
         ball.yv = -ball.yv;
+        spinBall();
     }
     // Bounce ball in the paddle
     if (ball.y > paddle.y - paddle.h * 0.5 - ball.h * 0.5
@@ -292,10 +383,7 @@ function updateBall(delta) {
         && ball.x < paddle.x + paddle.w * 0.5 + ball.w * 0.5) {
             ball.y = paddle.y - paddle.h * 0.5 - ball.h * 0.5;
             ball.yv = -ball.yv;
-        // Modify the angle ball
-        let angle = Math.atan2(-ball.yv, ball.xv);
-        angle += (Math.random() * Math.PI / 2 - Math.PI / 4) * BALL_SPIN;
-        applyBallSpeed(angle);
+            spinBall();
     }
     // Out of board
     if (ball.y > canv.height) {
@@ -305,7 +393,6 @@ function updateBall(delta) {
     if (ball.yv == 0) {
         ball.x = paddle.x;
     }
-
 };
 
 // Update bricks
@@ -314,12 +401,23 @@ function updateBricks(delta) {
     OUTER: for (let i = 0; i < bricks.length; i++) {
         for (let j = 0; j < BRICK_COLS; j++) {
             if (bricks[i][j] != null && bricks[i][j].intersect(ball)) {
+                updateScore(bricks[i][j].score);
                 bricks[i][j] = null;
                 ball.yv = -ball.yv;
+                spinBall();
                 //Score
                 break OUTER;
             }
         }
+    }
+};
+
+// Update score
+function updateScore(brickScore) {
+    score += brickScore;
+    if (score > scoreHigh) {
+        scoreHigh = score;
+        localStorage.setItem(KEY_SCORE, scoreHigh);
     }
 };
 
@@ -334,7 +432,7 @@ function Paddle() {
 };
 
 // Setting bricks
-function Brick(left, top, w, h, color) {
+function Brick(left, top, w, h, color, score) {
     this.w = w;
     this.h = h;
     this.bot = top + h;
@@ -342,6 +440,7 @@ function Brick(left, top, w, h, color) {
     this.right = left + w;
     this.top = top;
     this.color = color;
+    this.score = score;
     this.intersect = function(ball) {
         let bBot = ball.y + ball.h * 0.5;
         let bLeft = ball.x - ball.w * 0.5;

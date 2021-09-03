@@ -207,7 +207,7 @@ function drawText() {
     // Game over
     if (gameOver) {
         let text = win ? TEXT_WIN : TEXT_GAME_OVER;
-        ctx.font = textGameOver + "px" + TEXT_FONT;
+        ctx.font = text + "px" + TEXT_FONT;
         ctx.textAlign = 'center';
         ctx.fillText(text, WIDTH * 0.5, paddle.y - 200, maxWidth);
         ctx.fillText('PRESS SPACE TO PLAY AGAIN', WIDTH * 0.5, paddle.y - 180, maxWidth);

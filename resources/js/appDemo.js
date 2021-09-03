@@ -1,4 +1,0 @@
-const TEXT_LEVEL = 'LEVEL';
-const TEXT_LIVES = 'LIVES';
-const TEXT_SCORE = 'SCORE';
-const TEXT_HIGHSCORE = 'HIGHSCORE';

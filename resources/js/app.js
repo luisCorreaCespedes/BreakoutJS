@@ -2,6 +2,7 @@
 const WIDTH = 400;
 const HEIGHT = 500;
 const PADDLE_SPD = 0.7;
+const PADDLE_SIZE = 1;
 const BALL_SPD = 0.6;
 const BALL_SPD_MAX = 1;
 const BRICK_ROWS = 6;
@@ -51,6 +52,12 @@ document.body.appendChild(canv);
 var ctx = canv.getContext('2d');
 ctx.lineWidth = WALL;
 ctx.textBaseline = 'middle';
+
+// Sounds effects
+var fxBrick = new Audio('../resources/music/brick.m4a');
+var fxWall = new Audio('../resources/music/wall.m4a');
+var fxPaddle = new Audio('../resources/music/paddle.m4a');
+var fxPowerUp = new Audio('../resources/music/powerUp.m4a');
 
 // Game variables
 var ball, paddle;
@@ -200,7 +207,7 @@ function drawText() {
     // Game over
     if (gameOver) {
         let text = win ? TEXT_WIN : TEXT_GAME_OVER;
-        ctx.font = textSize + "px" + TEXT_FONT;
+        ctx.font = textGameOver + "px" + TEXT_FONT;
         ctx.textAlign = 'center';
         ctx.fillText(text, WIDTH * 0.5, paddle.y - 200, maxWidth);
         ctx.fillText('PRESS SPACE TO PLAY AGAIN', WIDTH * 0.5, paddle.y - 180, maxWidth);
@@ -346,12 +353,10 @@ function serveBall() {
     }
     // Random angle
     let minBounceAngle = MIN_BOUNCE_ANGLE / 180 * Math.PI;
-    console.log("minBounceAngle: " + minBounceAngle);
     let range = Math.PI - minBounceAngle * 0.2;
-    console.log("range: " + range);
     let angle = Math.random() * range + minBounceAngle;
-    console.log("angle: " + angle);
     applyBallSpeed(angle);
+    fxPaddle.play();
     return true;
 };
 
@@ -397,14 +402,17 @@ function updateBall(delta) {
     if (ball.x < WALL + ball.w * 0.5) {
         ball.x = WALL + ball.w * 0.5;
         ball.xv = -ball.xv;
+        fxWall.play();
         spinBall();
     } else if (ball.x > canv.width - WALL - ball.w * 0.5) {
         ball.x = canv.width - WALL - ball.w * 0.5;
         ball.xv = -ball.xv;
+        fxWall.play();
         spinBall();
     } else if (ball.y < WALL + ball.h * 0.5) {
         ball.y = WALL + ball.h * 0.5;
         ball.yv = -ball.yv;
+        fxWall.play();
         spinBall();
     }
     // Bounce ball in the paddle
@@ -414,6 +422,7 @@ function updateBall(delta) {
         && ball.x < paddle.x + paddle.w * 0.5 + ball.w * 0.5) {
             ball.y = paddle.y - paddle.h * 0.5 - ball.h * 0.5;
             ball.yv = -ball.yv;
+            fxPaddle.play();
             spinBall();
     }
     // Out of board
@@ -440,6 +449,7 @@ function updateBricks(delta) {
                     ball.y = bricks[i][j].top - ball.h * 0.5;
                 }
                 ball.yv = -ball.yv;
+                fxBrick.play();
                 bricks[i][j] = null;
                 //Score
                 numBricks--;
@@ -473,9 +483,9 @@ function updateScore(brickScore) {
 // Settings paddle
 function Paddle() {
     this.w = PADDLE_W;
-    this.h = PADDLE_H;
+    this.h = PADDLE_H * PADDLE_SIZE;
     this.x = canv.width / 2;
-    this.y = canv.height - this.h * 3;
+    this.y = canv.height - WALL * 3.5 + this.h / 2;
     this.spd = PADDLE_SPD * WIDTH;
     this.xv = 0;
 };
